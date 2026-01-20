@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
@@ -12,15 +13,33 @@ import (
 // Многопоточный доступ. Можно использовать io и map
 
 type Storage struct {
+	inmem map[string][]byte
 }
 
-// add init method
+func newStorage() Storage {
+	// add initialization from file system
+	return Storage{
+		inmem: make(map[string][]byte),
+	}
+}
 
 func (s Storage) get(key []byte) ([]byte, error) {
-	val, err := os.ReadFile(string(key))
+	val, ok := s.inmem[string(key)]
+	if ok {
+		return val, nil
+	}
+
+	var err error
+	val, err = os.ReadFile(string(key))
+	if errors.Is(err, os.ErrNotExist) {
+		return nil, nil
+	}
 	if err != nil {
 		return nil, err
 	}
+
+	s.inmem[string(key)] = val
+
 	return val, nil
 }
 
@@ -33,7 +52,7 @@ func (s Storage) set(key, value []byte) error {
 }
 
 func main() {
-	var s Storage
+	s := newStorage()
 
 	data, _ := s.get([]byte("a.txt"))
 	fmt.Println(string(data))
